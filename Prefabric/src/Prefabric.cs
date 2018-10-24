@@ -12,8 +12,5 @@ namespace Prefabric {
                 return _Serializer.Deserialize<PfRoot>(text_reader);
             }
         }
-
-        internal static object MakeObject(GameObject parent, PfObject obj) {
-        }
     }
 }
