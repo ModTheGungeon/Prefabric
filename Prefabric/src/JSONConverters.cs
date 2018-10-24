@@ -21,7 +21,7 @@ namespace Prefabric.JSON {
             JToken token = JToken.Load(reader);
             if (!(token is JObject)) throw new Newtonsoft.Json.JsonSerializationException("Must be an object");
             Dictionary<string, object> dict = new Dictionary<string, object>();
-            foreach (var child_tok in token) {
+            foreach (var child_tok in ((JObject)token).Children()) {
                 if (child_tok is JProperty) {
                     var prop = (JProperty)child_tok;
                     dict[prop.Name] = Deserialize(prop.Value);
