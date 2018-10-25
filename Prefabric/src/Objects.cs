@@ -64,13 +64,26 @@ namespace Prefabric {
     }
 
     [JsonObject]
+    public class PfComponent {
+        [JsonProperty("type")]
+        public string Type;
+        [JsonProperty("tag")]
+        public string Tag;
+        [JsonProperty("generic_params")]
+        public string[] GenericParams;
+        [JsonProperty("data")]
+        [JsonConverter(typeof(DataConverter))]
+        public Dictionary<string, object> Data;
+    }
+
+    [JsonObject]
     public class PfRoot {
         [JsonProperty("version")]
         public int Version = 1;
         [JsonProperty("transform")]
         public PfTransform Transform;
         [JsonProperty("children")]
-        public PfObject[] Children;
+        public PfComponent[] Children;
     }
 
     // end of json objects
