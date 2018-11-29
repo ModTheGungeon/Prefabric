@@ -3,7 +3,7 @@ using System.IO;
 using Newtonsoft.Json;
 
 namespace Prefabric {
-    public static class Prefabric {
+    public static partial class Prefabric {
         private static JsonSerializer _Serializer = new JsonSerializer();
 
         public static PfGameObject Load(string path) {

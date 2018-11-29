@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using Prefabric.JSON;
+using System.Reflection;
 
 namespace Prefabric {
     [JsonObject]
@@ -11,26 +12,46 @@ namespace Prefabric {
         [JsonProperty("assembly")]
         public string Assembly;
         [JsonProperty("generic_params")]
-        public string[] GenericParams;
-    }
+        public PfType[] GenericParams;
 
-    [JsonObject]
-    public class PfArrayType {
-        [JsonProperty("name")]
-        public string Name;
-        [JsonProperty("assembly")]
-        public string Assembly;
-        [JsonProperty("generic_params")]
-        public string[] GenericParams;
+        // Array
         [JsonProperty("dimensions")]
-        public int Dimensions;
+        public int? Dimensions = null;
+
+        public Type Resolve(Type context_type = null) {
+            Assembly asm;
+            if (context_type != null && Assembly == ".") asm = context_type.Assembly;
+            else if (Assembly == ".") throw new Exception($"Tried to use context assembly shorthand, but there is no context assembly to use");
+            else asm = System.Reflection.Assembly.Load(Assembly);
+            if (asm == null) throw new Exception($"Assembly '{Assembly}' failed to load.");
+
+            Type type;
+            if (context_type != null && Name == ".") type = context_type;
+            else if (Name == ".") throw new Exception($"Tried to use context type shorthand, but there is no context type to use");
+            else type = asm.GetType(Name);
+            if (type == null) throw new Exception($"Type '{Name}' from assembly '{Assembly}' doesn't exist.");
+
+            if (GenericParams != null) {
+                var generic_params = new List<Type>();
+                for (int i = 0; i < GenericParams.Length; i++) {
+                    generic_params.Add(GenericParams[i].Resolve());
+                }
+                if (!type.ContainsGenericParameters) throw new Exception($"Tried to create generic type from non-generic type (assembly '{Assembly}', type '{Name}', # of generic params {GenericParams.Length}).");
+                type = type.MakeGenericType(generic_params.ToArray());
+            }
+            //if (Dimensions != null) {
+            //    if (!type.IsArray) throw new Exception($"Tried to create array type from non-array type (assembly '{Assembly}', type '{Name}', dimensions {Dimensions}).");
+            //    type = type.MakeArrayType(Dimensions.Value);
+            //}
+            return type;
+        }
     }
 
     [JsonObject]
     public class PfObjectSkeleton {
         // Array
         [JsonProperty("array_type")]
-        public PfArrayType ArrayType;
+        public PfType ArrayType;
         [JsonProperty("entries")]
         [JsonConverter(typeof(ObjectArrayConverter))]
         public object[] ArrayEntries;
@@ -90,12 +111,12 @@ namespace Prefabric {
     [JsonObject]
     public class PfArray {
         [JsonProperty("array_type")]
-        public PfArrayType ArrayType;
+        public PfType ArrayType;
         [JsonProperty("entries")]
         [JsonConverter(typeof(ObjectArrayConverter))]
         public object[] Entries;
 
-        public PfArray(PfArrayType array_type, object[] entries) {
+        public PfArray(PfType array_type, object[] entries) {
             ArrayType = array_type;
             Entries = entries;
         }
@@ -116,10 +137,16 @@ namespace Prefabric {
     public class PfGameObject {
         [JsonProperty("version")]
         public int Version = 1;
+        [JsonProperty("name")]
+        public string Name;
         [JsonProperty("transform")]
         public PfObject Transform; // must be a Transform
         [JsonProperty("components")]
         public PfComponent[] Components;
+
+        public UnityEngine.GameObject Instantiate() {
+            return Prefabric.InstantiateGameObject(this);
+        }
     }
 
     [JsonObject]
