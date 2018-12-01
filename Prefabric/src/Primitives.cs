@@ -18,6 +18,10 @@ namespace Prefabric {
         [JsonProperty("dimensions")]
         public int? Dimensions = null;
 
+        // Collection
+        [JsonProperty("element_types")]
+        public PfType[] ElementTypes;
+
         public Type Resolve(Type context_type = null) {
             Assembly asm;
             if (context_type != null && Assembly == ".") asm = context_type.Assembly;
@@ -34,7 +38,7 @@ namespace Prefabric {
             if (GenericParams != null) {
                 var generic_params = new List<Type>();
                 for (int i = 0; i < GenericParams.Length; i++) {
-                    generic_params.Add(GenericParams[i].Resolve());
+                    generic_params.Add(GenericParams[i].Resolve(context_type));
                 }
                 if (!type.ContainsGenericParameters) throw new Exception($"Tried to create generic type from non-generic type (assembly '{Assembly}', type '{Name}', # of generic params {GenericParams.Length}).");
                 type = type.MakeGenericType(generic_params.ToArray());
@@ -56,6 +60,13 @@ namespace Prefabric {
         [JsonConverter(typeof(ObjectArrayConverter))]
         public object[] ArrayEntries;
 
+        // Collection
+        [JsonProperty("collection_type")]
+        public PfType CollectionType;
+        [JsonProperty("elements")]
+        [JsonConverter(typeof(DoubleObjectArrayConverter))]
+        public object[][] CollectionElements;
+
         // Generic
         [JsonProperty("type")]
         public PfType ObjectType;
@@ -71,16 +82,19 @@ namespace Prefabric {
 
         public object TryMakeObject() {
             var a = ArrayType != null;
-            var b = ObjectType != null;
-            var c = InsertID != null;
+            var b = CollectionType != null;
+            var c = ObjectType != null;
+            var d = InsertID != null;
 
-            if (a && c || b && c || a && c) {
+            if (a && b || a && c || a && d || b && c || b && d || c && d) {
                 throw new InvalidOperationException("Inconsistent object type");
             }
 
             object obj = null;
             if (ArrayType != null) {
                 obj = new PfArray(ArrayType, ArrayEntries);
+            } else if (CollectionType != null) {
+                obj = new PfCollection(CollectionType, CollectionElements);
             } else if (ObjectType != null) {
                 obj = new PfObject(ObjectType, Data);
             } else if (InsertID != null) {
@@ -119,6 +133,20 @@ namespace Prefabric {
         public PfArray(PfType array_type, object[] entries) {
             ArrayType = array_type;
             Entries = entries;
+        }
+    }
+
+    [JsonObject]
+    public class PfCollection {
+        [JsonProperty("collection_type")]
+        public PfType CollectionType;
+        [JsonProperty("elements")]
+        [JsonConverter(typeof(DoubleObjectArrayConverter))]
+        public object[][] Elements;
+
+        public PfCollection(PfType collection_type, object[][] elements) {
+            CollectionType = collection_type;
+            Elements = elements;
         }
     }
 

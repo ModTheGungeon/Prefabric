@@ -16,7 +16,7 @@ namespace Prefabric.JSON {
 
     public class ObjectArrayConverter : JsonConverter {
         public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer) {
-            writer.WriteRawValue(value.ToString());
+            writer.WriteRawValue(value.ToString()); // TODO: won't work
         }
 
         public object Deserialize(JToken token) {
@@ -40,6 +40,43 @@ namespace Prefabric.JSON {
         public override bool CanConvert(Type objectType) {
             bool can = false;
             can = can || objectType.IsAssignableFrom(typeof(object[]));
+            return can;
+        }
+    }
+
+    public class DoubleObjectArrayConverter : JsonConverter {
+        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer) {
+            writer.WriteRawValue(value.ToString()); // TODO: won't work
+        }
+
+        public object Deserialize(JToken token) {
+            if (token is JValue) return ((JValue)token).Value;
+            if (token is JObject) {
+                return JSONHelper.DeserializeObject(token);
+            }
+            throw new NotSupportedException($"Invalid token type: {token.GetType()}");
+        }
+
+        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
+            JToken token = JToken.Load(reader);
+            if (!(token is JArray)) throw new Newtonsoft.Json.JsonSerializationException("Must be an array");
+            List<object[]> objs = new List<object[]>();
+            List<object> current_objs;
+            foreach (var child_tok in ((JArray)token).Children()) {
+                if (child_tok is JArray) {
+                    current_objs = new List<object>();
+                    foreach (var nested_child_tok in ((JArray)child_tok).Children()) {
+                        current_objs.Add(Deserialize(nested_child_tok));
+                    }
+                    objs.Add(current_objs.ToArray());
+                } else throw new Exception("PfCollection's 'elements' field must have only array objects inside");
+            }
+            return objs.ToArray();
+        }
+
+        public override bool CanConvert(Type objectType) {
+            bool can = false;
+            can = can || objectType.IsAssignableFrom(typeof(object[][]));
             return can;
         }
     }
